@@ -32,16 +32,28 @@ func NewOutCommand(director bosh.Director, storageClient storage.StorageClient, 
 	}
 }
 
-func (c OutCommand) Run(outRequest concourse.OutRequest) (OutResponse, error) {
-	if err := c.director.WaitForDeployLock(); err != nil {
+func (c OutCommand) Run(outRequest concourse.OutRequest) (resp OutResponse, err error) {
+	if err = c.director.WaitForDeployLock(); err != nil {
 		return OutResponse{}, err
 	}
 
 	if outRequest.Params.Delete.Enabled {
 		return OutResponse{}, c.director.Delete(outRequest.Params.Delete.Force)
 	} else {
-		return c.deploy(outRequest)
+		resp, err = c.deploy(outRequest)
 	}
+
+	// Early return in the event that something failed, and only
+	// run the errand if we succeeded.
+	if err != nil {
+		return resp, err
+	}
+
+	if outRequest.Params.RunErrand.ErrandName != "" {
+		return resp, c.director.RunErrand(outRequest.Params.RunErrand)
+	}
+
+	return resp, err
 }
 
 func (c OutCommand) deploy(outRequest concourse.OutRequest) (OutResponse, error) {

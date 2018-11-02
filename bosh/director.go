@@ -46,6 +46,7 @@ type ReleaseSpec struct {
 type Director interface {
 	Delete(force bool) error
 	Deploy(manifestBytes []byte, deployParams DeployParams) error
+	RunErrand(errandParams concourse.RunErrandParams) error
 	Interpolate(manifestBytes []byte, interpolateParams InterpolateParams) ([]byte, error)
 	DownloadManifest() ([]byte, error)
 	ExportReleases(targetDirectory string, releases []ReleaseSpec) error
@@ -125,6 +126,23 @@ func (d BoshDirector) Deploy(manifestBytes []byte, deployParams DeployParams) er
 
 	if deployParams.Cleanup {
 		d.commandRunner.Execute(&boshcmd.CleanUpOpts{})
+	}
+
+	return nil
+}
+
+func (d BoshDirector) RunErrand(params concourse.RunErrandParams) error {
+	opts := &boshcmd.BoshOpts{
+		RunErrand: boshcmd.RunErrandOpts{
+			Args: boshcmd.RunErrandArgs{
+				Name: params.ErrandName,
+			},
+		},
+	}
+
+	err := d.commandRunner.Execute(opts)
+	if err != nil {
+		return fmt.Errorf("Could not run errand: %s", err)
 	}
 
 	return nil

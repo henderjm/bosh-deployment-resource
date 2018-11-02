@@ -564,5 +564,59 @@ var _ = Describe("OutCommand", func() {
 			})
 
 		})
+
+		Context("when the requested operation is an errand", func() {
+			Context("when configured properly", func() {
+				BeforeEach(func() {
+					outRequest.Params = concourse.OutParams{
+						RunErrand: concourse.RunErrandParams{
+							ErrandName: "make-awesome",
+						},
+					}
+				})
+
+				It("runs the errand", func() {
+					response, err := outCommand.Run(outRequest)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(director.DeployCallCount()).To(Equal(0))
+					Expect(director.DeleteCallCount()).To(Equal(0))
+					Expect(director.RunErrandArgsForCall(0)).To(Equal(outRequest.Params.RunErrand))
+
+					Expect(response).To(Equal(out.OutResponse{}))
+				})
+			})
+
+			Context("when missing required args", func() {
+				It("returns an error", func() {
+					badConfig := outRequest
+
+					response, err := outCommand.Run(badConfig)
+					Expect(err).To(HaveOccurred())
+					Expect(director.DeployCallCount()).To(Equal(0))
+					Expect(director.DeleteCallCount()).To(Equal(0))
+					Expect(director.RunErrandArgsForCall(0)).To(Equal(outRequest.Params.RunErrand))
+
+					Expect(response).To(Equal(out.OutResponse{}))
+				})
+			})
+
+			Context("when the errand fails", func() {
+				var expectedErr error
+
+				BeforeEach(func() {
+					expectedErr = fmt.Errorf("Errand failed!")
+					director.RunErrandReturns(expectedErr)
+				})
+
+				It("returns the error", func() {
+					response, err := outCommand.Run(outRequest)
+
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(Equal(expectedErr))
+					Expect(response).To(Equal(out.OutResponse{}))
+				})
+			})
+		})
 	})
 })

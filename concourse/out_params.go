@@ -14,9 +14,14 @@ type OutParams struct {
 	VarFiles  map[string]string      `json:"var_files,omitempty"`
 	OpsFiles  []string               `json:"ops_files,omitempty"`
 	Delete    DeleteParams           `json:"delete,omitempty"`
+	RunErrand RunErrandParams        `json:"run_errand,omitempty"`
 }
 
 type DeleteParams struct {
 	Enabled bool `json:"enabled,omitempty"`
 	Force   bool `json:"force,omitempty"`
+}
+
+type RunErrandParams struct {
+	ErrandName string `json:"errand_name,omitempty"`
 }

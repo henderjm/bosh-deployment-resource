@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 
 	"github.com/cloudfoundry/bosh-deployment-resource/bosh"
 	"github.com/cloudfoundry/bosh-deployment-resource/bosh/boshfakes"
@@ -212,6 +213,38 @@ var _ = Describe("BoshDirector", func() {
 				err := director.Delete(true)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError("Delete failed!"))
+			})
+		})
+	})
+
+	Describe("RunErrand", func() {
+		params := concourse.RunErrandParams{
+			ErrandName: "awesome-errand",
+		}
+
+		It("tells BOSH to run the specified errand", func() {
+			err := director.RunErrand(params)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(commandRunner.ExecuteCallCount()).To(Equal(1))
+
+			runErrandOpts := commandRunner.ExecuteArgsForCall(0).(*boshcmd.BoshOpts)
+			Expect(runErrandOpts.RunErrand.Args).To(MatchFields(IgnoreExtras, Fields{
+				"Name": Equal(params.ErrandName),
+				// Ignore the other fields
+			}))
+		})
+
+		Context("when the errand fails", func() {
+			BeforeEach(func() {
+				commandRunner.ExecuteReturns(errors.New("Deeper failure"))
+			})
+
+			It("bubbles up the error", func() {
+				err := director.RunErrand(params)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("not run errand")))
+				Expect(err).To(MatchError(ContainSubstring("Deeper failure")))
 			})
 		})
 	})
